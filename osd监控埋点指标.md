@@ -1,13 +1,13 @@
-1.1  WBThrottle
+### WBThrottle
 
 | 监控类型   |      监控项      |  说明 |
 |----------|:-------------:|------:|
-| perf dump WBThrottle |  ceph.WBThrottle.bytes_dirtied         | 脏数据大小	    |
-|                      |  ceph.WBThrottle.bytes_wb              | 写入数据大小   |
-|                      |  ceph.WBThrottle.ios_dirtied           | 脏数据操作	    |
-|                      |  ceph.WBThrottle.ios_wb                | 写操作        |
-|                      |  ceph.WBThrottle.inodes_dirtied        | 等待写入的条目        |
-|                      |  ceph.WBThrottle.inodes_wb             | 写记录        |
+| perf dump WBThrottle |  bytes_dirtied         | 脏数据大小	    |
+|                      |  bytes_wb              | 写入数据大小   |
+|                      |  ios_dirtied           | 脏数据操作	    |
+|                      |  ios_wb                | 写操作        |
+|                      |  inodes_dirtied        | 等待写入的条目        |
+|                      |  inodes_wb             | 写记录        |
 
 
 
