@@ -96,9 +96,13 @@ $ ceph mds tell <node> <args> [<args>...]
 
  
 
-## 2.13.添加mds机器
+## 2.13 添加mds机器
 ```
 #添加一个机器 new_host 到现有mds集群中 
 su - ceph  -c "ceph-deploy --ceph-conf /etc/ceph/ceph.conf  mds create $new_host"
 ```
 
+## 2.14 查看客户端session
+```
+ceph daemon mds.ceph-xx-mds01.gz01 session ls
+```
