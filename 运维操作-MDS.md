@@ -44,7 +44,7 @@ standby_count_wanted	1
 
 ## 2.3 删除mds节点
 ```
-$ ceph mds rm 0 mds.ceph-bench-osd00
+$ ceph mds rm 0 mds.ceph-xx-osd00
 ```
 
 ## 2.4 增加数据存储池
