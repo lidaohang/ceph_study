@@ -52,7 +52,7 @@ perf dump mon |ceph.mon.num_sessions|当前打开的监视器会话数||
 *|ceph.mon.election_win |选举赢得选举数	 ||	 	 
 *|ceph.mon.election_lose |选举流失的选举数 ||	 	 	 
 
-1.4 paxos
+## 1.4 paxos
 监控类型 | 监控项 |  说明 | 级别 |
 ---|---|---|---|
 perf dump paxos|ceph.paxos.start_leader|启动leader角色|| 	 	 
@@ -102,7 +102,7 @@ perf dump paxos|ceph.paxos.start_leader|启动leader角色||
 *|ceph.paxos.new_pn_latency.avgcount|新建提议号询问等待时间的平均数量||	 	 
 *|ceph.paxos.new_pn_latency.sum	|新建提议号询问等待时间的总数|| 
 
-##1.5 throttle
+## 1.5 throttle
 监控类型 | 监控项 |  说明 | 级别 |
 ---|---|---|---|
 perf dump throttle-*|val|当前可用的值||	 	 	 
