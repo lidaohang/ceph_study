@@ -36,6 +36,10 @@ WARNING: This tool is deprecated.  Use the layout.* xattrs to query and modify l
         8388608      10002b63282.00000002             0       4194304  70
        12582912      10002b63282.00000003             0       4194304  68
 ```
+**源码跟踪**
+ - [https://github.com/ceph/ceph/blob/v10.2.9/src/cephfs.cc#L117](https://github.com/ceph/ceph/blob/v10.2.9/src/cephfs.cc#L117)
+![image.png](https://upload-images.jianshu.io/upload_images/2099201-866720fcd9587fa1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
 ### 2.2根据offset查找object信息
 ```
 root@xxx$ cephfs /mnt/kernel_log_push.log show_location -l 12582912
