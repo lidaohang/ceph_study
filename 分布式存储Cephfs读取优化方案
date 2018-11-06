@@ -1,4 +1,5 @@
 # 1.背景说明
+继上次分享的  [Ceph介绍及原理架构分享](https://www.jianshu.com/p/cc3ece850433) 和 [分布式存储Ceph之PG状态详解](https://www.jianshu.com/p/36c2d5682d87) ，这次分享点干货。
 用户需要从cephfs存储系统中检索一个大文件指定关键字的一行信息， 并且对延迟和性能要求比较高。
 
 # 2. 原始方案
@@ -53,7 +54,7 @@ sys	0m0.823s
 - dss-readline直接获取需要块的offset 该行的信息
 
 ##  3.3 实战
-```
+```shell
 //查找2.8G文件offset对应的信息
 $ ll  nginx/logs/access.log.2018110216 -lh
 -rw-rw-r-- 1 root root 2.8G Nov  2 17:08 nginx/logs/access.log.2018110216
@@ -101,7 +102,7 @@ sys	0m0.011s
 # 4. 深入分析
 ## 4.1 文件对应object信息
 ### 4.1.1 Jewel版本
-```
+```shell
 //Ceph Jewel版本里，有个cephfs的工具，可以获取file的location信息
 //根据offset查找object信息
 $ cephfs /mnt/kernel_log_push.log show_location -l 4194304
@@ -127,7 +128,8 @@ WARNING: This tool is deprecated.  Use the layout.* xattrs to query and modify l
 ### 4.1.2 源码跟踪
 **ceph jewel版本，cephfs代码**
     [https://github.com/ceph/ceph/blob/v10.2.9/src/cephfs.cc#L117](https://github.com/ceph/ceph/blob/v10.2.9/src/cephfs.cc#L117)
-```
+
+```c/c++
     struct ceph_ioctl_layout layout;
     memset(&layout, 0, sizeof(layout));
     //获取layout信息
@@ -155,7 +157,7 @@ WARNING: This tool is deprecated.  Use the layout.* xattrs to query and modify l
 ```
 **CEPH_IOC_GET_DATALOC代码**
 
-```
+```c/c++
 //定义/src/client/ioctl.h
 //https://github.com/ceph/ceph/blob/d038e1da7a6c9b31ba4463b8ebedb9908981a55e/src/client/ioctl.h#L46
 #define CEPH_IOC_GET_DATALOC _IOWR(CEPH_IOCTL_MAGIC, 3,	\
@@ -242,11 +244,13 @@ static long ceph_ioctl_get_dataloc(struct file *file, void __user *arg)
 
      ...
 ```
+
 ### 4.1.2 Luminous版本
 Luminous版本里，没有src/cephfs.cc文件, 发现test_ioctls.c 其实有相关的测试代码。
 https://github.com/ceph/ceph/blob/master/src/client/test_ioctls.c
 /src/client/test_ioctls.c
-```
+
+```c/c++
 int main(int argc, char **argv)
 {
 	...
@@ -300,7 +304,8 @@ int main(int argc, char **argv)
 - 超大行或者不存在结尾符\n 自动截取1024字节数。
 
 ## 4.4 通过librados库，读取object的信息
-```
+
+```c/c++
  /* Declare the cluster handle and required arguments. */
     int                                 err;
     char                                cluster_name[] = "ceph";
@@ -376,246 +381,43 @@ int main(int argc, char **argv)
     rados_shutdown(cluster);
 ```
 
-## 4.5 附上Demo
-```
-//cat dss_readline.c
+## 4.5 项目工具
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <limits.h>
+**1. 源码地址**
+ - https://github.com/lidaohang/cephfs_readline
 
-#include <sys/ioctl.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <string.h>
+**2. dss_readfile工具**
+ - 根据存储池、文件信息、offset获取对应的信息
 
-#include <rados/librados.h>
-#include "ioctl.h"
-
-
-#define     DSS_OK          0
-#define     DSS_ERROR       -1
-
-
-static const int object_size = 4194304;
-
-
-
-static
-int get_object_offset(const size_t src_offset) {
-    size_t                             object_count;
-    size_t                             object_offset;;
-
-    object_count = src_offset / object_size;
-    return (src_offset - object_count * object_size);
-}
-
-
-static
-int get_object_name(const char *filename,const size_t offset, char *dest_object_name) {
-
-    int                                 fd, err;
-    struct                              ceph_ioctl_layout l;
-    struct                              ceph_ioctl_dataloc dl;
-
-
-    fd = open(filename, O_RDONLY, 0644);
-    if (fd < 0) {
-        printf("error: open() filename=[%s] failed with   error=[%s]\n",filename,  strerror(fd));
-        return DSS_ERROR;
-    }
-
-    dl.file_offset = offset;
-    err = ioctl(fd, CEPH_IOC_GET_DATALOC, (unsigned long)&dl);
-    if (err < 0) {
-        printf("error: getting location [%s]\n", strerror(err));
-        return DSS_ERROR;
-    }
-
-    if (dl.object_name == NULL || strlen(dl.object_name) <= 0) {
-        printf("error: dl.object_name is zero  file_name=[%s] offset=[%d]",  filename, offset);
-        return DSS_ERROR;
-    }
-
-    memcpy(dest_object_name, dl.object_name, strlen(dl.object_name) + 1);
-
-
-    close(fd);
-
-    return DSS_OK;
-}
-
-static
-int get_rados_line(const char *poolname, const char *object_name, const size_t offset, const size_t line_size, char *line) {
-
-    /* Declare the cluster handle and required arguments. */
-    int                                 err;
-    char                                cluster_name[] = "ceph";
-    char                                user_name[] = "client.admin";
-    uint64_t                            flags = 0;
-    rados_t                             cluster;
-    rados_ioctx_t                       io;
-    rados_completion_t                  comp;
-
-
-    /* Initialize the cluster handle with the "ceph" cluster name and the "client.admin" user */
-    err = rados_create2(&cluster, cluster_name, user_name, flags);
-    if (err < 0) {
-            fprintf(stderr, "error: couldn't create the cluster handle poolname=[%s] object_name=[%s] offset=[%d] error=[%s]\n",
-			poolname, object_name, offset, strerror(-err));
-            return DSS_ERROR;
-    }
-
-    /* Read a Ceph configuration file to configure the cluster handle. */
-    err = rados_conf_read_file(cluster, "/etc/ceph/ceph.conf");
-    if (err < 0) {
-            fprintf(stderr, "error: cannot read config file poolname=[%s] object_name=[%s] offset=[%d] error=[%s]\n",
-			poolname, object_name, offset,  strerror(-err));
-            return DSS_ERROR;
-    }
-
-    /* Connect to the cluster */
-    err = rados_connect(cluster);
-    if (err < 0) {
-            fprintf(stderr, "error: cannot connect to cluster poolname=[%s] object_name=[%s] offset=[%d] error=[%s]\n",
-			poolname, object_name, offset,  strerror(-err));
-            return DSS_ERROR;
-    }
-
-    //create io
-    err = rados_ioctx_create(cluster, poolname, &io);
-    if (err < 0) {
-            fprintf(stderr, "error: cannot open rados pool poolname=[%s] object_name=[%s] offset=[%d] error=[%s]\n",
-			poolname, object_name, offset, strerror(-err));
-            rados_shutdown(cluster);
-            return DSS_ERROR;
-    }
-
-    /*
-     * Read data from the cluster asynchronously.
-     * First, set up asynchronous I/O completion.
-     */
-    err = rados_aio_create_completion(NULL, NULL, NULL, &comp);
-    if (err < 0) {
-            fprintf(stderr, "error: could not create aio completion poolname=[%s] object_name=[%s] offset=[%d] error=[%s]\n",
-			poolname, object_name, offset, strerror(-err));
-            rados_ioctx_destroy(io);
-            rados_shutdown(cluster);
-            return DSS_ERROR;
-    }
-
-    /* Next, read data using rados_aio_read. */
-    err = rados_aio_read(io, object_name, comp, line, line_size, offset);
-    if (err < 0) {
-            fprintf(stderr, "error: cannot read object poolname=[%s] object_name=[%s] offset=[%d] error=[%s]\n",
-			poolname, object_name, offset, strerror(-err));
-            rados_ioctx_destroy(io);
-            rados_shutdown(cluster);
-            return DSS_ERROR;
-    }
-    /* Wait for the operation to complete */
-    rados_aio_wait_for_complete(comp);
-    /* Release the asynchronous I/O complete handle to avoid memory leaks. */
-    rados_aio_release(comp);
-
-    rados_ioctx_destroy(io);
-    rados_shutdown(cluster);
-
-    return DSS_OK;
-}
-
-static
-int handler(const char *poolname, const char *filename, size_t offset, size_t line_size, char *line) {
-    int                             rc;
-    size_t			    dest_offset;
-    char                            object_name[20];
-
-    //get object_name
-    rc = get_object_name(filename, offset, object_name);
-    if (rc == DSS_ERROR) {
-        return DSS_ERROR;
-    }
-
-    //get object_name offset
-    dest_offset = get_object_offset(offset);
-
-    rc = get_rados_line(poolname, object_name, dest_offset, line_size,  line);
-    if (rc == DSS_ERROR) {
-        return DSS_ERROR;
-    }
-
-    return DSS_OK;
-}
-
-
-int main(int argc, char **argv)
-{
-    int                             rc;
-    size_t			    line_size = 1024;
-    char                            *filename;
-    char                            *poolname;
-    size_t                          offset;
-    char                            line[line_size], next_object_line[line_size], *p;
-
-    if (argc != 4) {
-        printf("usage: dss_readfile <poolname> <filename> <offset>\n");
-        return 1;
-    }
-
-    poolname = argv[1];
-    filename = argv[2];
-    offset = atoll(argv[3]);
-
-    rc = handler(poolname, filename, offset, line_size, line);
-    if (rc == DSS_ERROR) {
-	return 1;
-    }
-
-    if (strlen(line) == line_size) {
-    	printf("success: %s", line);
-    	return 0;
-    }
-
-    if ((p = strchr(line, '\n')) != NULL) {
-	*p = '\0';
-    	printf("success: %s", line);
-    	return 0;
-    }
-
-    //next object_name
-    offset = offset + 1024;
-    rc = handler(poolname, filename, offset, line_size, next_object_line);
-    if (rc == DSS_ERROR) {
-	return 1;
-    }
-
-    if ((p = strchr(next_object_line, '\n')) != NULL) {
-	*p = '\0';
-    	printf("success: %s%s", line, next_object_line);
-    	return 0;
-    }
-
-    strncpy(line, next_object_line, line_size - strlen(line));
-
-    printf("success: %s", line);
-    return 0;
-}
-
-//cat Makefile
-CC = gcc
-CEPH_LIB =  -L/home/rpmbuild/BUILD/ceph-12.2.8.1/build/lib/ -lrados
-CEPH_INCLUDE = -I/home/rpmbuild/BUILD/ceph-12.2.8.1/src/include -I/home/rpmbuild/BUILD/ceph-12.2.8.1/src/ -I/home/rpmbuild/BUILD/ceph-12.2.8.1/build/include/ -I/home/rpmbuild/BUILD/ceph-12.2.8.1/src/client/
-
-all:
-	$(CC) -g dss_fileline.c $(CEPH_LIB) -o dss-fileline  $(CEPH_INCLUDE)
-
+```shell
 //usage: dss_readfile <poolname> <filename> <offset>
+./dss_readfile data nginx/logs/access.log.2018110216 1024
+
 ```
+**3. ngx_cephfs_readline**
+ - 为了提升性能以及用户体验，基于ceph module + librados 开发，充分利用nginx优秀的高并发性能。
+
+```json
+//接口
+
+http://127.0.0.1 :8088/v1/dss-cephfs/readfile
+
+
+//请求body
+{
+    "poolname":"data",
+    "filename":"/mnt/business.log.2018101708",
+    "offset":1024
+}
+
+//响应body
+{
+    "code":1,
+    "cost": 50,
+    "data":"[INFO][2018-10-17T08:59:49.018+0800] xxxxxx"
+}
+```
+
 
 ## 4.7 资料
  - https://github.com/ceph/ceph
