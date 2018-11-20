@@ -434,7 +434,15 @@ ll /mnt/
 **故障总结：**
 首先有一个PG 3.7f有三个副本[5,21,29]， 当停掉一个osd.21之后， 写入数据到osd.5, osd.29。 这个时候停掉osd.29, osd.5 ，最后拉起osd.21。 这个时候osd.21的数据比较旧，就会出现PG为down的情况，这个时候客户端IO会夯住，只能拉起挂掉的osd才能修复问题。
 
-### 3.8.3 结论
+### 3.8.3 PG为Down的OSD丢失或无法拉起
+  - 修复方式(生产环境已验证)
+      a. 删除无法拉起的OSD
+      b. 创建对应编号的OSD
+      c. PG的Down状态就会消失
+      d. 对于unfound 的PG ，可以选择delete或者revert 
+         ceph pg {pg-id} mark_unfound_lost revert|delete
+
+### 3.8.4 结论
   - 典型的场景：A(主)、B、C
       a. 首先kill B 
       b. 新写入数据到 A、C 
@@ -443,9 +451,21 @@ ll /mnt/
  - 出现PG为Down的场景是由于osd节点数据太旧，并且其他在线的osd不足以完成数据修复。
  - 这个时候该PG不能提供客户端IO读写， IO会挂起夯住。
 
+## 3.9 Incomplete
+Peering过程中， 由于 a. 无非选出权威日志 b. 通过choose_acting选出的Acting Set后续不足以完成数据修复，导致Peering无非正常完成。
+常见于ceph集群在peering状态下，来回重启服务器，或者掉电。
+
+### 3.9.1 总结
+ - 修复方式 [wanted: command to clear 'incomplete' PGs](http://tracker.ceph.com/issues/10098)
+   a. stop the osd that is primary for the incomplete PG;
+   b. run: ceph-objectstore-tool --data-path ... --journal-path ... --pgid $PGID --op mark-complete
+   c. start the osd. 
+
+
     
 # 作者信息
 **作者：**李航
 **个人简介：** 多年的底层开发经验，在高性能nginx开发和分布式缓存redis cluster有着丰富的经验，目前从事Ceph工作两年左右。
-先后在58同城、汽车之家、优酷土豆集团工作。 目前供职于滴滴基础平台运维部 负责分布式Ceph集群开发及运维等工作。
+先后在58同城、汽车之家、优酷土豆集团工作。 
+目前供职于滴滴基础平台运维部-技术专家岗位   负责分布式Ceph集群开发及运维等工作。
 个人主要关注的技术领域：高性能Nginx开发、分布式缓存、分布式存储。
