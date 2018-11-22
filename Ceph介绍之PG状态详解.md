@@ -436,22 +436,21 @@ ll /mnt/
 
 ### 3.8.3 PG为Down的OSD丢失或无法拉起
   - 修复方式(生产环境已验证)
-  ```
+```
       a. 删除无法拉起的OSD
       b. 创建对应编号的OSD
       c. PG的Down状态就会消失
       d. 对于unfound 的PG ，可以选择delete或者revert 
          ceph pg {pg-id} mark_unfound_lost revert|delete
-  ```       
-
+```
 ### 3.8.4 结论
   - 典型的场景：A(主)、B、C
-  ```
+```
       a. 首先kill B 
       b. 新写入数据到 A、C 
       c. kill A和C
-      d. 拉起B
-  ```     
+      d. 拉起B    
+```
  - 出现PG为Down的场景是由于osd节点数据太旧，并且其他在线的osd不足以完成数据修复。
  - 这个时候该PG不能提供客户端IO读写， IO会挂起夯住。
 
@@ -461,11 +460,30 @@ Peering过程中， 由于 a. 无非选出权威日志 b. 通过choose_acting选
 
 ### 3.9.1 总结
  - 修复方式 [wanted: command to clear 'incomplete' PGs](http://tracker.ceph.com/issues/10098)
- ```
-      a. stop the osd that is primary for the incomplete PG;
-      b. run: ceph-objectstore-tool --data-path ... --journal-path ... --pgid $PGID --op mark-complete
-      c. start the osd. 
- ```     
+比如：pg 1.1是incomplete，先对比pg 1.1的主副本之间 pg里面的对象数 哪个对象数多 就把哪个pg export出来
+然后import到对象数少的pg里面 然后再mark complete，一定要先export pg备份。
+
+**简单方式，数据可能又丢的情况**
+```
+   a. stop the osd that is primary for the incomplete PG;
+   b. run: ceph-objectstore-tool --data-path ... --journal-path ... --pgid $PGID --op mark-complete
+   c. start the osd. 
+```
+
+**保证数据完整性**
+```
+#1. 查看pg 1.1主副本里面的对象数，假设主本对象数多，则到主本所在osd节点执行
+$ ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-0/ --journal-path /var/lib/ceph/osd/ceph-0/journal --pgid 1.1 --op export --file /home/pg1.1
+
+#2. 然后将/home/pg1.1 scp到副本所在节点（有多个副本，每个副本都要这么操作），然后到副本所在节点执行
+$ ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-1/ --journal-path /var/lib/ceph/osd/ceph-1/journal --pgid 1.1 --op import --file /home/pg1.1
+
+#3. 然后再makr complete
+$ ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-1/ --journal-path /var/lib/ceph/osd/ceph-1/journal --pgid 1.1 --op mark-complete
+
+#4. 最后启动osd
+$ start osd
+```
 
 
     
