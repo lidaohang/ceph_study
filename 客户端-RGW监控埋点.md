@@ -45,10 +45,10 @@
 ## 1.4 Finisher-RadosClient Metrics Table
 监控类型 | 监控项 |  说明 | 级别 |
 ---|---|---|---|
-finisher-radosclient | queue_len | 队列长度 |  |
-* | complete_latency.avgcount | 完成的请求延迟队列的平均数 |  |
-* | complete_latency.sum | 完成的请求延迟队列的总数 | |
-* | complete_latency.avgtime | 完成的请求延迟队列的平均时间 | |
+|finisher-radosclient | queue_len | 队列长度 |  |
+|* | complete_latency.avgcount | 完成的请求延迟队列的平均数 |  |
+|* | complete_latency.sum | 完成的请求延迟队列的总数 | |
+|* | complete_latency.avgtime | 完成的请求延迟队列的平均时间 | |
 
 ## 1.5 Objecter Metrics Table
 | 监控类型   |      监控项      |  说明  |
