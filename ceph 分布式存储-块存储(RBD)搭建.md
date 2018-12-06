@@ -80,4 +80,32 @@ sudo rbd-nbd map test_pool/test_image
 ```
 
 ## RBD特性解析
+RBD支持的特性，及具体BIT值的计算如下
+| 属性 | 功能 | BIT码 |
+|---|---|---|
+| layering | 支持分层 | 1 |
+| striping | 支持条带化v2 | 2 |
+| exclusive-lock | 支持独占锁 | 4 |
+| object-map | 支持对象映射（依赖 exclusive-lock ） | 8 |
+| fast-diff	| 快速计算差异（依赖 object-map ）| 16 |
+| deep-flatten | 支持快照扁平化操作 | 32 |
+| journaling | 支持记录 IO 操作（依赖独占锁）| 64 |
 
+## 2.5  取消块设备映射到系统内核
+```
+#rbd unmap {image-name}
+ 
+$ rbd unmap test_pool/test_image
+```
+## 2.6 格式化块设备镜像
+```
+$ sudo mkfs.ext4 /dev/rbd1
+ 
+# sudo mkfs.xfs -f  /dev/nbd0
+```
+# 3. 挂载文件系统
+```
+$ sudo mkdir /mnt/ceph-block-device
+$ sudo mount /dev/rbd0/ /mnt/ceph-block-device
+$ cd /mnt/ceph-block-device
+```
