@@ -385,6 +385,8 @@ int main(int argc, char **argv)
 
 **1. 源码地址**
  - https://github.com/lidaohang/cephfs_readline
+ 
+![image.png](https://upload-images.jianshu.io/upload_images/2099201-b933bf9eeb1a6bad.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240) 
 
 **2. dss_readfile工具**
  - 根据存储池、文件信息、offset获取对应的信息
