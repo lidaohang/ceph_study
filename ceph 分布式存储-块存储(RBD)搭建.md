@@ -81,6 +81,7 @@ sudo rbd-nbd map test_pool/test_image
 
 ## RBD特性解析
 RBD支持的特性，及具体BIT值的计算如下
+
 | 属性 | 功能 | BIT码 |
 |---|---|---|
 | layering | 支持分层 | 1 |
@@ -90,6 +91,7 @@ RBD支持的特性，及具体BIT值的计算如下
 | fast-diff	| 快速计算差异（依赖 object-map ）| 16 |
 | deep-flatten | 支持快照扁平化操作 | 32 |
 | journaling | 支持记录 IO 操作（依赖独占锁）| 64 |
+
 
 ## 2.5  取消块设备映射到系统内核
 ```
