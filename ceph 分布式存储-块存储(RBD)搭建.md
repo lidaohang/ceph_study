@@ -1,5 +1,10 @@
 # 1. 管理存储池
 ## 1.1  创建存储池
+``
+PG数量的预估
+集群中单个池的PG数计算公式如下：PG 总数 = (OSD 数 * 100) / 最大副本数 / 池数 (结果必须舍入到最接近2的N次幂的值)
+``
+
 ```
 #ceph osd pool create {pool-name} {pg-num} [{pgp-num}] [replicated] [crush-ruleset-name]
  
