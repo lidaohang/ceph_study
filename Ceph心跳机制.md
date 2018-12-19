@@ -56,3 +56,55 @@ Ceph通过伙伴OSD汇报失效节点和Monitor统计来自OSD的心跳两种方
     - 来自不同主机的汇报达到mon_osd_min_down_reporters。
     - 满足前两个条件前失效汇报没有被源OSD取消。
  - **扩散：**作为中心节点的Monitor并没有在更新OSDMap后尝试广播通知所有的OSD和Client，而是惰性的等待OSD和Client来获取。以此来减少Monitor压力并简化交互逻辑。
+
+# 6. 心跳设置
+## 6.1 配置监视器/ OSD互动
+您已完成初始Ceph的配置之后，您可以部署和运行的Ceph。当你执行一个命令，如ceph health 或 ceph -s ， [Ceph的监视器](http://ceph.com/docs/master/glossary/#term-ceph-monitor)将报告[CEPH存储集群](http://ceph.com/docs/master/glossary/#term-ceph-storage-cluster)的当前状态。Ceph的监视器通过每个[Ceph的OSD守护](http://ceph.com/docs/master/glossary/#term-ceph-osd-daemon)实例，以及相邻的Ceph OSD守护实例，了解Ceph的存储集群的相关状态。Ceph的监视器如果没有收到报告，或者如果它接收Ceph的存储集群的变化的报告，Ceph的监视器更新的的[CEPH集群](http://ceph.com/docs/master/glossary/#term-ceph-cluster-map)映射图的状态。
+
+Ceph为Ceph的监视器/ Ceph的OSD守护程序交互提供合理的默认设置。但是，您可以覆盖默认值。以下部分描述如何用Ceph的监视器和Ceph的OSD守护实例互动来达到Ceph的存储集群监控的目的。
+
+## 6.2. OSDS检查心跳
+每个Ceph的OSD守护程序检查其他Ceph的OSD守护进程的心跳每6秒。Ceph的配置文件下的[OSD]部分加入OSD   osd heartbeat interval ，或通过设定值在运行时，您可以更改心跳间隔。如果在20秒的宽限期内邻居的Ceph的OSD守护进程不显示心跳，Ceph的OSD守护进程可能考虑周边的Ceph OSD守护挂掉，并向一个Ceph的Monitor报告，这将更新的CEPH集群地图。一个OSD   osd heartbeat grace 可以在Ceph的配置文件下的[OSD]部分设置，或在运行时，你通过设置这个值改变这个宽限期。
+
+## 6.3. OSDS报告挂掉的OSD
+默认情况下，Ceph的OSD守护程序必须向Ceph的监视器报告三次：另一个Ceph的OSD守护程序已经挂掉，在Ceph的Monitor承认该报告Ceph的OSD守护挂掉之前。在（早期V0.62版本之前）Ceph的配置文件下的[MON]部分添加  osd min down reports setting，或者通过设定值在运行时，您可以更改OSD报告的挂掉的最低数量 。默认情况下，只有一个Ceph的OSD守护进程是必需报告另一个Ceph的OSD守护进程。您可以更改向Ceph监视器报告Ceph的OSD守护进程的Ceph的OSD Daemones 的数量，通过添加一个mon osd min down reporters设置在Ceph的配置文件中，或者通过设定值在运行时。
+
+## 6.4. 凝视失败的OSD报告
+Ceph的OSD守护进程如果不能和Ceph的配置文件（或群集地图）中定义的OSD守护同行，它将每30秒ping一个Ceph的监视器，为了最新副本的集群映射图。Ceph的配置文件 下的[OSD]部分加入  osd mon heartbeat interval  设置，或通过在运行时设定值，您可以更改Ceph的监控心跳间隔。 
+
+## 6.5. OSDS报告其状态
+Ceph的OSD守护进程如果不向Ceph的监视器报告，至少每120秒一次，Ceph的监视器会考虑Ceph的OSD守护已经挂掉。您可以更改Ceph的监控报告间隔，通过加入 osd mon report interval max 设置在Ceph的配置文件的[OSD]部分，或者通过设置在运行时的值。Ceph的OSD守护进程会尝试报告其状态每30秒。在Ceph的配置文件下的[OSD]部分加入 osd mon report interval min s设置，或者通过设定值在运行时，您可以更改Ceph的OSD守护报告间隔。
+
+# 7. 配置设置
+修改心跳设置时，你应该将它们包括在 您的配置文件的[global]部分。
+
+## 7.1 监视器MONITOR设置
+| 参数 | 说明 | 类型 | 默认值 |
+|:---:|:---:|:---:|:---:|
+|mon OSD min up ratio  | Ceph的OSD未挂掉的最低比率在Ceph的OSD守护程序被仍定挂掉之前 | double | 0.3 |
+|mon OSD min in ratio | Ceph的OSD实例的最低比率在Ceph的OSD守护程序被仍定出局之前 | double | 0.3 |
+|mon osd laggy halflife | laggy估计会腐烂的秒数 | int | 60 * 60 |
+|mon osd laggy weight | laggy估计衰减的新样本的权重 | double | 0.3 |
+|mon osd adjust heartbeat grace | 如果设置为true，Ceph将在laggy估计的基础上扩展 | bool | true |
+|mon osd adjust down out interval | 如果设置为true，Ceph基于laggy估计扩展 | bool | true |
+|mon osd auto mark in | Ceph将标记任何引导的Ceph的OSD守护进程作为在 CEPH存储集群 | bool | false |
+|mon osd auto mark auto out in| Ceph的标记引导Ceph的OSD守护 Ceph的存储集群，集群中的自动标记 | bool | true |
+| mon osd auto mark new in | 头孢将迎来启动新的Ceph的OSD守护在 Ceph的存储集群 | bool | true |
+| mon osd down out subtree limit| 最大的[CRUSH](http://ceph.com/docs/master/glossary/#term-crush)单位Ceph的类型，会自动标记出来 | String | rack |
+|mon osd report timeout | 宽限期秒下来在声明反应迟钝Ceph的OSD守护前 | 32-bit Integer | 900 |
+|mon osd min down reporters | Ceph的OSD守护报告向下 Ceph的OSD守护所需的最低数量 | 32-bit Integer | 1 |
+| mon osd min down reports | Ceph的OSD守护的最低次数必须报告说，另一个Ceph的OSD守护下来 | 32-bit Integer | 3 |
+
+## 7.2 OSD设置
+| 参数 | 说明 | 类型 | 默认值 |
+|:---:|:---:|:---:|:---:|
+|OSD heartbeat address| 一个Ceph的OSD守护进程的网络地址的心跳 | Address | The host address |
+|OSD heartbeat interval | 多久Ceph的OSD守护坪及其同行（以秒计）| 32-bit Integer | 6 |
+|OSD heartbeat grace| Ceph的OSD当一个守护进程并没有表现出心跳Ceph的存储集群认为，经过时间的 | 32-bit Integer | 20 |
+| OSD mon heartbeat interval | Ceph的的OSD守护坪一个Ceph的监视器如果它没有的CEPH OSD守护同行，多久 | 32-bit Integer | 30 |
+| OSD mon report interval max | Ceph的OSD守护进程报告Ceph的监视器Ceph的监视器前认为Ceph的OSD守护下来的时间以秒为单位的最大 | 32-bit Integer | 120 |
+| OSD mon report inteval min | 秒为Ceph的OSD的守护Ceph的监视器，以防止Ceph的监视器考虑Ceph的OSD守护的最低数量 | 32-bit Integer | 5 (有效范围：应小于OSD 周一 报告 间隔 最大)|
+| OSD mon ACK timeout | 等待的秒数为Ceph的监视器确认请求统计 |  32-bit Integer | 30 |
+
+
+
