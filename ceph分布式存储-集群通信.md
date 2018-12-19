@@ -16,9 +16,11 @@
  - DispatchQueue该类用来缓存收到的消息, 然后唤醒 DispatchQueue::dispatch_thread 线程找到后端的 Dispatch 处理消息
 
 **SimpleMessenger数据结构：**
+
 ![image.png](https://upload-images.jianshu.io/upload_images/2099201-3148e27eb879d7d6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 **SimpleMessenger详细解析：**
+
 ![image.png](https://upload-images.jianshu.io/upload_images/2099201-9eedad8c8ced5582.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 
