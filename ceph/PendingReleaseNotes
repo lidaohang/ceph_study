@@ -1,0 +1,113 @@
+>= 12.1.2
+---------
+* When running 'df' on a CephFS filesystem comprising exactly one data pool,
+  the result now reflects the file storage space used and available in that
+  data pool (fuse client only).
+* Added new commands "pg force-recovery" and "pg-force-backfill". Use them
+  to boost recovery or backfill priority of specified pgs, so they're
+  recovered/backfilled before any other. Note that these commands don't
+  interrupt ongoing recovery/backfill, but merely queue specified pgs
+  before others so they're recovered/backfilled as soon as possible.
+  New commands "pg cancel-force-recovery" and "pg cancel-force-backfill"
+  restore default recovery/backfill priority of previously forced pgs.
+
+
+12.2.1
+------
+
+* Clusters will need to upgrade to 12.2.1 before upgrading to any
+  Mimic 13.y.z version (either a development release or an eventual
+  stable Mimic release).
+
+- *CephFS*:
+
+  * Limiting MDS cache via a memory limit is now supported using the new
+    mds_cache_memory_limit config option (1GB by default).  A cache reservation
+    can also be specified using mds_cache_reservation as a percentage of the
+    limit (5% by default). Limits by inode count are still supported using
+    mds_cache_size. Setting mds_cache_size to 0 (the default) disables the
+    inode limit.
+
+* The maximum number of PGs per OSD before the monitor issues a
+  warning has been reduced from 300 to 200 PGs.  200 is still twice
+  the generally recommended target of 100 PGs per OSD.  This limit can
+  be adjusted via the ``mon_max_pg_per_osd`` option on the
+  monitors.  The older ``mon_pg_warn_max_per_osd`` option has been removed.
+
+* Creating pools or adjusting pg_num will now fail if the change would
+  make the number of PGs per OSD exceed the configured
+  ``mon_max_pg_per_osd`` limit.  The option can be adjusted if it
+  is really necessary to create a pool with more PGs.
+
+12.2.3
+------
+
+- *RBD*:
+
+  * The RBD C API's rbd_discard method now enforces a maximum length of
+    2GB to match the C++ API's Image::discard method. This restriction
+    prevents overflow of the result code.
+
+- *CephFS*:
+
+  * The CephFS client now catches failures to clear dentries during startup
+    and refuses to start as consistency and untrimmable cache issues may
+    develop. The new option client_die_on_failed_dentry_invalidate (default:
+    true) may be turned off to allow the client to proceed (dangerous!).
+
+12.2.5
+------
+
+- *CephFS*:
+
+  * Upgrading an MDS cluster to 12.2.3+ will result in all active MDS
+    exiting due to feature incompatibilities once an upgraded MDS comes online
+    (even as standby). Operators may ignore the error messages and continue
+    upgrading/restarting or follow this upgrade sequence:
+
+    Reduce the number of ranks to 1 (`ceph fs set <fs_name> max_mds 1`),
+    deactivate all other ranks (`ceph mds deactivate <fs_name>:<n>`), shutdown
+    standbys leaving the one active MDS, upgrade the single active MDS, then
+    upgrade/start standbys. Finally, restore the previous max_mds.
+
+    See also: https://tracker.ceph.com/issues/23172
+
+* *rados list-inconsistent-obj format changes:*
+
+  * Various error strings have been improved.  For example, the "oi" or "oi_attr"
+    in errors which stands for object info is now "info" (e.g. oi_attr_missing is
+    now info_missing).
+
+  * The object's "selected_object_info" is now in json format instead of string.
+
+  * The attribute errors (attr_value_mismatch, attr_name_mismatch) only apply to user
+    attributes.  Only user attributes are output and have the internal leading underscore
+    stripped.
+
+  * If there are hash information errors (hinfo_missing, hinfo_corrupted,
+    hinfo_inconsistency) then "hashinfo" is added with the json format of the
+    information.  If the information is corrupt then "hashinfo" is a string
+    containing the value.
+
+  * If there are snapset errors (snapset_missing, snapset_corrupted,
+    snapset_inconsistency) then "snapset" is added with the json format of the
+    information.  If the information is corrupt then "snapset" is a string containing
+    the value.
+
+  * If there are object information errors (info_missing, info_corrupted,
+    obj_size_info_mismatch, object_info_inconsistency) then "object_info" is added
+    with the json format of the information instead of a string.  If the information
+    is corrupt then "object_info" is a string containing the value.
+
+* *rados list-inconsistent-snapset format changes:*
+
+  * Various error strings have been improved.  For example, the "ss_attr" in
+    errors which stands for snapset info is now "snapset" (e.g. ss_attr_missing is
+    now snapset_missing).  The error snapset_mismatch has been renamed to snapset_error
+    to better reflect what it means.
+
+  * The head snapset information is output in json format as "snapset."  This means that
+    even when there are no head errors, the head object will be output when any shard
+    has an error.  This head object is there to show the snapset that was used in
+    determining errors.
+

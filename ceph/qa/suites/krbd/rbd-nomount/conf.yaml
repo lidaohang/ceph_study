@@ -1,0 +1,9 @@
+overrides:
+  ceph:
+    conf:
+      global:
+        ms die on skipped message: false
+      client:
+        rbd default features: 5
+    log-whitelist:
+      - slow request

@@ -1,0 +1,12 @@
+overrides:
+  ceph:
+    log-whitelist:
+      - not responding, replacing
+      - \(MDS_INSUFFICIENT_STANDBY\)
+  ceph-fuse:
+    disabled: true
+tasks:
+  - cephfs_test_runner:
+      modules:
+        - tasks.cephfs.test_failover
+

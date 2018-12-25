@@ -1,0 +1,13 @@
+overrides:
+  ceph:
+    conf:
+      mon:
+        mon min osdmap epochs: 25
+        paxos service trim min: 5
+# thrashing monitors may make mgr have trouble w/ its keepalive
+    log-whitelist:
+      - overall HEALTH_
+      - \(MGR_DOWN\)
+tasks:
+- install:
+- ceph:
