@@ -128,6 +128,7 @@ public:
   }
 };
 
+// mds asok指令信息
 bool MDSDaemon::asok_command(string command, cmdmap_t& cmdmap, string format,
 		    ostream& ss)
 {
@@ -154,6 +155,7 @@ bool MDSDaemon::asok_command(string command, cmdmap_t& cmdmap, string format,
   return handled;
 }
 
+// mds dump 监控状态信息
 void MDSDaemon::dump_status(Formatter *f)
 {
   f->open_object_section("status");
@@ -187,6 +189,7 @@ void MDSDaemon::dump_status(Formatter *f)
   f->close_section(); // status
 }
 
+// 设置 admin socket
 void MDSDaemon::set_up_admin_socket()
 {
   int r;
@@ -316,6 +319,7 @@ void MDSDaemon::set_up_admin_socket()
   assert(r == 0);
 }
 
+// 清除 admin socket信息
 void MDSDaemon::clean_up_admin_socket()
 {
   AdminSocket *admin_socket = g_ceph_context->get_admin_socket();
@@ -346,6 +350,7 @@ void MDSDaemon::clean_up_admin_socket()
   asok_hook = NULL;
 }
 
+// 获取mds 配置key信息
 const char** MDSDaemon::get_tracked_conf_keys() const
 {
   static const char* KEYS[] = {
@@ -374,6 +379,7 @@ const char** MDSDaemon::get_tracked_conf_keys() const
   return KEYS;
 }
 
+// mds配置文件更改
 void MDSDaemon::handle_conf_change(const struct md_config_t *conf,
 			     const std::set <std::string> &changed)
 {
@@ -432,7 +438,7 @@ void MDSDaemon::handle_conf_change(const struct md_config_t *conf,
   }
 }
 
-
+// 初始化MDSDaemon
 int MDSDaemon::init()
 {
   dout(10) << sizeof(MDSCacheObject) << "\tMDSCacheObject" << dendl;
@@ -458,12 +464,14 @@ int MDSDaemon::init()
   messenger->add_dispatcher_tail(&beacon);
   messenger->add_dispatcher_tail(this);
 
-  // get monmap
+  // 获取monmap
   monc->set_messenger(messenger);
 
   monc->set_want_keys(CEPH_ENTITY_TYPE_MON | CEPH_ENTITY_TYPE_OSD |
                       CEPH_ENTITY_TYPE_MDS | CEPH_ENTITY_TYPE_MGR);
   int r = 0;
+
+  // 初始化 MonClient
   r = monc->init();
   if (r < 0) {
     derr << "ERROR: failed to get monmap: " << cpp_strerror(-r) << dendl;
@@ -475,7 +483,8 @@ int MDSDaemon::init()
 
   // tell monc about log_client so it will know about mon session resets
   monc->set_log_client(&log_client);
-
+  
+  // MonClient 身份验证
   r = monc->authenticate();
   if (r < 0) {
     derr << "ERROR: failed to authenticate: " << cpp_strerror(-r) << dendl;
@@ -498,7 +507,8 @@ int MDSDaemon::init()
     mds_lock.Unlock();
     return -ETIMEDOUT;
   }
-
+  
+  // 初始化MgrClient
   mgrc.init();
   messenger->add_dispatcher_head(&mgrc);
 
@@ -526,19 +536,22 @@ int MDSDaemon::init()
     mds_lock.Unlock();
     return 0; 
   }
-
+  
+  // 初始化timer
   timer.init();
-
+  
+  // 初始化Beacon
   beacon.init(mdsmap);
   messenger->set_myname(entity_name_t::MDS(MDS_RANK_NONE));
 
-  // schedule tick
+  // 重置tick schedule tick
   reset_tick();
   mds_lock.Unlock();
 
   return 0;
 }
 
+// 重置tick
 void MDSDaemon::reset_tick()
 {
   // cancel old
@@ -553,6 +566,7 @@ void MDSDaemon::reset_tick()
       }));
 }
 
+// tick
 void MDSDaemon::tick()
 {
   // reschedule
@@ -563,6 +577,7 @@ void MDSDaemon::tick()
     mds_rank->tick();
   }
 }
+
 
 void MDSDaemon::send_command_reply(MCommand *m, MDSRank *mds_rank,
 				   int r, bufferlist outbl,

@@ -216,16 +216,20 @@ int main(int argc, const char **argv)
   unregister_async_signal_handler(SIGTERM, handle_mds_signal);
   shutdown_async_signal_handler();
 
+ //异常情况
  shutdown:
   // yuck: grab the mds lock, so we can be sure that whoever in *mds
   // called shutdown finishes what they were doing.
+  // mds解锁
   mds->mds_lock.Lock();
   mds->mds_lock.Unlock();
 
+  // 移除pid文件
   pidfile_remove();
 
   // only delete if it was a clean shutdown (to aid memory leak
   // detection, etc.).  don't bother if it was a suicide.
+  // 回收mds实例，msgr实例
   if (mds->is_clean_shutdown()) {
     delete mds;
     delete msgr;
