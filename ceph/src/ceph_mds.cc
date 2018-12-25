@@ -64,7 +64,7 @@ static void usage()
   generic_server_usage();
 }
 
-
+//解析rank字符串
 static int parse_rank(const char *opt_name, const std::string &val)
 {
   std::string err;
@@ -78,16 +78,17 @@ static int parse_rank(const char *opt_name, const std::string &val)
 }
 
 
-
+// MDSDaemon 类实例
 MDSDaemon *mds = NULL;
 
-
+// MDS信号
 static void handle_mds_signal(int signum)
 {
   if (mds)
     mds->handle_signal(signum);
 }
 
+// main函数，入口
 int main(int argc, const char **argv)
 {
   ceph_pthread_setname(pthread_self(), "ceph-mds");
@@ -96,6 +97,7 @@ int main(int argc, const char **argv)
   argv_to_vec(argc, argv, args);
   env_to_vec(args);
 
+  // 初始化全局信息(配置信息等)
   auto cct = global_init(NULL, args,
 			 CEPH_ENTITY_TYPE_MDS, CODE_ENVIRONMENT_DAEMON,
 			 0, "mds_data");
@@ -144,6 +146,8 @@ int main(int argc, const char **argv)
   get_random_bytes((char*)&nonce, sizeof(nonce));
 
   std::string public_msgr_type = g_conf->ms_public_type.empty() ? g_conf->get_val<std::string>("ms_type") : g_conf->ms_public_type;
+  
+  // Messenger 创建消息类实例
   Messenger *msgr = Messenger::create(g_ceph_context, public_msgr_type,
 				      entity_name_t::MDS(-1), "mds",
 				      nonce, Messenger::HAS_MANY_CONNECTIONS);
@@ -165,6 +169,7 @@ int main(int argc, const char **argv)
   msgr->set_policy(entity_name_t::TYPE_CLIENT,
                    Messenger::Policy::stateful_server(0));
 
+  // 绑定地址 
   int r = msgr->bind(g_conf->public_addr);
   if (r < 0)
     exit(1);
@@ -172,21 +177,23 @@ int main(int argc, const char **argv)
   global_init_daemonize(g_ceph_context);
   common_init_finish(g_ceph_context);
 
-  // get monmap
+  // 获取mon映射信息 monmap
   MonClient mc(g_ceph_context);
   if (mc.build_initial_monmap() < 0)
     return -1;
   global_init_chdir(g_ceph_context);
 
+  // 启动msgr服务
   msgr->start();
 
-  // start mds
+  // 启动 mds 服务
   mds = new MDSDaemon(g_conf->name.get_id().c_str(), msgr, &mc);
 
   // in case we have to respawn...
   mds->orig_argc = argc;
   mds->orig_argv = argv;
 
+  // mds 初始化信息
   r = mds->init();
   if (r < 0) {
     msgr->wait();

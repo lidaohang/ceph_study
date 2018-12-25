@@ -45,6 +45,7 @@ static void global_init_set_globals(CephContext *cct)
   g_conf = cct->_conf;
 }
 
+// 输出ceph版本号
 static void output_ceph_version()
 {
   char buf[1024];
@@ -61,6 +62,7 @@ static const char* c_str_or_null(const std::string &str)
   return str.c_str();
 }
 
+// 指定路径文件的拥有者权限
 static int chown_path(const std::string &pathname, const uid_t owner, const gid_t group,
 		      const std::string &uid_str, const std::string &gid_str)
 {
@@ -81,6 +83,7 @@ static int chown_path(const std::string &pathname, const uid_t owner, const gid_
   return r;
 }
 
+// 初始化配置信息
 void global_pre_init(std::vector < const char * > *alt_def_args,
 		     std::vector < const char* >& args,
 		     uint32_t module_type, code_environment_t code_env,
@@ -98,6 +101,7 @@ void global_pre_init(std::vector < const char * > *alt_def_args,
   if (alt_def_args)
     conf->parse_argv(*alt_def_args);  // alternative default args
 
+  // 解析配置文件
   int ret = conf->parse_config_files(c_str_or_null(conf_file_list),
 				     &cerr, flags);
   if (ret == -EDOM) {
