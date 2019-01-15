@@ -1,4 +1,5 @@
-# 1. FS Client Metrics Table
+# 1. perf dump
+## 1.1. FS Client Metrics Table
 - ceph daemon /var/run/ceph/ceph-client.admin.asok  perf dump 
 
 监控类型 | 监控项 |  说明 | 级别 |
@@ -14,7 +15,7 @@ AsyncMessenger* | msgr_recv_messages | 网络接收消息 | |
 * | msgr_running_recv_time | 消息接收的总时间 | |
 * | msgr_running_fast_dispatch_time | 快速调度总时间 | |
 
-# 2. FS Client Metrics Table
+## 1.2. FS Client Metrics Table
 监控类型 | 监控项 |  说明 | 级别 |
 ---|---|---|---|
 client | reply.avgcount | 在元数据请求上接收答复的等待时间队列的平均数 | |
@@ -27,7 +28,7 @@ client | reply.avgcount | 在元数据请求上接收答复的等待时间队列
 * | wrlat.sum | 文件数据写入操作的等待时间队列的总数 | |
 * | wrlat.avgtime | 文件数据写入操作的等待时间队列的平均时间 | |
 
-# 3. FS ObjectCacher-libcephfs Metrics Table
+## 1.3. FS ObjectCacher-libcephfs Metrics Table
 监控类型 | 监控项 |  说明 | 级别 |
 ---|---|---|---|
 objectcacher-libcephfs | cache_ops_hit | 命中缓存 | |
@@ -43,7 +44,7 @@ objectcacher-libcephfs | cache_ops_hit | 命中缓存 | |
 * | write_time_blocked | 由于脏数据限制而阻塞写入的时间 | |
 
 
-## 4. objecter
+## 1.4. objecter
 | 监控类型   |      监控项      |  说明  |
 |----------|:-------------:|:-------------:|
 | perf dump objecter  |  op_active         				 	  | 主动操作数	    					|
@@ -113,7 +114,7 @@ objectcacher-libcephfs | cache_ops_hit | 命中缓存 | |
 |   				  |  omap_del         		  	  	  	 | osd map删除操作  							|
 
 
-## 5. throttle
+## 1.5. throttle
 监控类型 | 监控项 |  说明 | 级别 |
 ---|---|---|---|
 perf dump throttle-*|val|当前可用的值||	 	 	 
@@ -128,3 +129,25 @@ perf dump throttle-*|val|当前可用的值||
 *|put_sum|推送总数	 ||	 	 
 *|wait.avgcount|等待平均数量||	 	 	 
 *|wait.sum|等待总数||	
+
+# 2. status
+ceph daemon /var/run/ceph/ceph-client.admin.asok status
+
+监控类型 | 监控项 |  说明 | 级别 |
+|---|---|---|---|
+|status | osd_epoch_barrier |||	 
+| | osd_epoch | osd epoch编号 ||	 
+| | mds_epoch | mds epoch编号 ||	 
+| | inode_count | 文件句柄数量 ||	
+| | addr_str | 客户端地址 ||
+| | inst_str | 客户端inst信息 || 	
+| | id | 编号 || 		
+| | dentry_pinned_count | 文件夹数量 || 	
+| | dentry_count | 所有文件数量(包含文件夹) || 	
+| | metadata.ceph_sha1 | ceph sha1|| 	
+| | metadata.ceph_version | ceph版本号|| 	
+| | metadata.entity_id | 账号id信息|| 	
+| | metadata.hostname | 机器名|| 	
+| | metadata.mount_point | 挂载目录|| 
+| | metadata.pid| 进程pid|| 
+| | metadata. root | 挂载父节点|| 
