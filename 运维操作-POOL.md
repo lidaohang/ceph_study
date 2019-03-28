@@ -157,6 +157,20 @@ $ ceph osd getcrushmap -o cm
 $ osdmaptool om --import-crush cm --test-map-pgs-dump --pool {pool_id}
 ```
 
+## 2.21 设置 pool 及关联的文件系统目录的 quota
+```
+# 1. 设置 pool 名为 test_data 的 quota，如: 120T
+$ ceph osd pool set-quota test_data max_bytes $((120 * 1024 * 1024 * 1024 * 1024))
+# 2. mount cephfs的根目录
+$ ceph-fuse /mnt/
+# 3. 设置根目录里的子目录 test_data 的 quato(子目录 test_data 关联的pool为 test_data)
+$ setfattr -n ceph.quota.max_bytes -v  $((120 * 1024 * 1024 * 1024 * 1024)) /mnt/test_data
+# 4. 查看子目录 test_data 的 quato
+$ ceph-fuse -r /test_data /test --user test_cephfs
+$ df -h
+```
+
+
 # 3. 参数梳理
 ## 3.1 参数介绍
 
