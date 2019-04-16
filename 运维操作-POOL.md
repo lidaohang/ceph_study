@@ -159,14 +159,33 @@ $ osdmaptool om --import-crush cm --test-map-pgs-dump --pool {pool_id}
 
 ## 2.21 设置 pool 及关联的文件系统目录的 quota
 ```
-# 1. 设置 pool 名为 test_data 的 quota，如: 120T
-$ ceph osd pool set-quota test_data max_bytes $((120 * 1024 * 1024 * 1024 * 1024))
-# 2. mount cephfs的根目录
+#create pool
+ceph osd pool create sns_data 64
+
+#add pool
+ceph mds add_data_pool sns_data
+
+
+# 设置 pool 名为 sns_data 的 quota，如: 120T
+$ ceph osd pool set-quota sns_data max_bytes $((120 * 1024 * 1024 * 1024 * 1024))
+
+# mount cephfs的根目录
 $ ceph-fuse /mnt/
-# 3. 设置根目录里的子目录 test_data 的 quato(子目录 test_data 关联的pool为 test_data)
-$ setfattr -n ceph.quota.max_bytes -v  $((120 * 1024 * 1024 * 1024 * 1024)) /mnt/test_data
-# 4. 查看子目录 test_data 的 quato
-$ ceph-fuse -r /test_data /test --user test_cephfs
+
+# 3. 设置根目录里的子目录 sns_data 的 quato(子目录 sns_data 关联的pool为 sns_data)
+$ setfattr -n ceph.quota.max_bytes -v  $((120 * 1024 * 1024 * 1024 * 1024)) /mnt/sns_data
+
+# change layout
+$setfattr -n ceph.dir.layout.pool -v sns_data /mnt/sns_data
+
+#add user
+ceph auth get-or-create client.trade mon 'allow r' mds 'allow r, allow rw path=/trade' osd 'allow rw pool=cephfs_data'
+
+#modify user caps
+ceph auth caps client.sns mds 'allow rw path=/mnt/sns_data' mon 'allow r' osd 'allow rw pool=sns_data'
+
+# 查看子目录 sns_data 
+$ ceph-fuse -r /sns_data /test --user sns
 $ df -h
 ```
 
