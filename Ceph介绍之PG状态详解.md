@@ -484,6 +484,49 @@ $ ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-1/ --journal-path /va
 #4. 最后启动osd
 $ start osd
 ```
+**验证方案**
+```
+#1. 把状态incomplete的pg，标记为complete。建议操作前，先在测试环境验证，并熟悉ceph-objectstore-tool工具的使用。
+PS：使用ceph-objectstore-tool之前需要停止当前操作的osd，否则会报错。
+
+#2. 查询pg 7.123的详细信息，在线使用查询
+ceph pg 7.123 query > /export/pg-7.123-query.txt
+
+#3. 每个osd副本节点进行查询
+ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-641/ --type bluestore --pgid 7.123 --op info > /export/pg-7.123-info-osd641.txt
+如
+pg 7.123 OSD 1 存在1,2,3,4,5 object
+pg 7.123 OSD 2 存在1,2,3,6   object
+pg 7.123 OSD 2 存在1,2,3,7   object
+
+#4. 查询对比数据
+#4.1 导出pg的object清单
+ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-641/ --type bluestore --pgid 7.123 --op list > /export/pg-7.123-object-list-osd-641.txt
+
+#4.2 查询pg的object数量
+ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-641/ --type bluestore --pgid 7.123 --op list|wc -l
+
+#4.3 对比所有副本的object是否一致。
+diff -u /export/pg-7.123-object-list-osd-1.txt /export/pg-7.123-object-list-osd-2.txt
+比如：pg 7.123是incomplete，对比7.123的所有副本之间pg里面的object数量。
+ - 如上述情况，diff对比后，每个副本（主从所有副本）的object list是否一致。避免有数据不一致。使用数量最多，并且diff对比后，数量最多的包含所有object的备份。
+ - 如上述情况，diff对比后，数量是不一致，最多的不包含所有的object，则需要考虑不覆盖导入，再导出。最终使用完整的所有的object进行导入。注：import是需要提前remove pg后进行导入，等于覆盖导入。
+ - 如上述情况，diff对比后，数据是一致，则使用object数量最多的备份，然后import到object数量少的pg里面 然后在所有副本mark complete，一定要先在所有副本的osd节点export pg备份，避免异常后可恢复pg。
+
+#5. 导出备份
+查看pg 7.123所有副本里面的object数量，参考上述情况，假设osd-641的object数量多，数据diff对比一致后，则到object数量最多，object list一致的副本osd节点执行（最好是每个副本都进行导出备份,为0也需要导出备份）
+ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-641/ --type bluestore --pgid 7.123 --op export --file /export/pg1.414-osd-1.obj
+
+#6. 导入备份
+然后将/export/pg1.414-osd-1.obj scp到副本所在节点，在对象少的副本osd节点执行导入。（最好是每个副本都进行导出备份,为0也需要导出备份）
+将指定的pg元数据导入到当前pg,导入前需要先删除当前pg（remove之前请先export备份一下pg数据）。需要remove当前pg,否则无法导入，提示已存在。
+ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-57/ --type bluestore --pgid 7.123 --op remove 需要加–force才可以删除。
+ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-57/ --type bluestore --pgid 7.123 --op import --file /export/pg1.414-osd-1.obj
+
+#7. 标记pg状态，makr complete（主从所有副本执行）
+ceph-objectstore-tool --data-path /var/lib/ceph/osd/ceph-57/ --type bluestore --pgid 7.123 --op mark-complete
+```
+
 
 
     
